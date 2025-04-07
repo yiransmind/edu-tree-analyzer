@@ -347,20 +347,51 @@ def main():
             st.pyplot(fig_tree)
 
             st.write(
-                """
-                ### How to Read This Tree Figure
+    """
+    ### How to Read This Tree Figure
 
-                - **samples**: Number of training samples in this node.  
-                - **value**:
-                  - **Classification**: the distribution of samples across classes.  
-                  - **Regression**: the average target value in that node.  
-                - **impurity**:
-                  - **Classification**: 'gini', 'entropy', or 'log_loss' depending on your chosen criterion.  
-                  - **Regression**: e.g., 'squared_error' if you chose that criterion.  
-                - **Splits**: Each node splits according to a rule like "Feature ≤ x".  
-                - **Leaf nodes**: No further splits, so the 'value' is your final prediction for that subgroup.  
-                """
-            )
+    This diagram shows how the Decision Tree splits your data step-by-step, from the **root node** at the top (all samples) down to **leaf nodes** with no further splits. Each node in the tree provides statistics about the subset of data that reached that node.
+
+    **Key Elements to Look For:**
+
+    - **samples**:  
+      The total number of training observations (rows) that have flowed into this node after all previous splits.  
+      - *Interpretation:* If a node says "samples = 120," it means 120 rows from your training set meet the conditions leading to that node.
+
+    - **value**:  
+      - **Classification**: A list (or array) indicating how many samples in this node belong to each class.  
+        - *Example:* `value = [40, 80]` could mean there are 40 samples of class A and 80 samples of class B in this node.  
+        - *Interpretation:* Whichever class count is larger typically indicates the node’s “majority class.”  
+      - **Regression**: A single number showing the **mean** (average) target value among the samples in that node.  
+        - *Example:* `value = 23.5` indicates that on average, the target value is 23.5 for this subset.
+
+    - **impurity**:  
+      Shows how “pure” (homogeneous) the node is, according to your chosen splitting criterion.  
+      - **Classification**:  
+        - If you selected "gini," it displays the Gini impurity (0 = perfectly pure, 0.5 for a 2-class problem = maximum impurity).  
+        - If "entropy," it displays the entropy measure (0 = perfectly pure, higher values indicate more mixed classes).  
+        - If "log_loss," it displays a loss-based impurity measure.  
+      - **Regression**:  
+        - If you chose "squared_error," it’s effectively displaying MSE at that node (how far off, on average, the predictions are from the true values in that node).  
+        - Other criteria ("friedman_mse," "absolute_error," "poisson") have their own ways of measuring node quality.
+
+    - **Splits**:  
+      Each node has a rule like "`Feature <= x`," meaning all rows where that feature’s value is less than or equal to `x` go to the left child node, and rows above `x` go to the right child.  
+      - *Interpretation:* This rule is chosen by the algorithm to best separate the data (reduce impurity or error).
+
+    - **Leaf nodes**:  
+      Nodes with no further splits. The **value** of a leaf is the prediction the tree makes for all samples that fall into that leaf.  
+      - For classification, the final predicted class is typically the majority class in that leaf.  
+      - For regression, the prediction is the average target value of that leaf.
+
+    **Colors and Shading** (for classification trees):
+    - Often, the background color of a node (if `filled=True`) indicates which class is most prevalent, and the intensity of the color can show how “pure” that node is. A deeper shade suggests the node is more dominated by a single class.
+
+    **Overall Interpretation**:
+    - Starting at the top, follow the splits (true/false or ≤ / >) that match a given row’s feature values until you reach a leaf node. That leaf’s **value** is then your model’s prediction for that row.
+    """
+)
+            
 
             # Download the tree plot
             buf_tree = io.BytesIO()
