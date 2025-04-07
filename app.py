@@ -1,226 +1,248 @@
 import streamlit as st
 import pandas as pd
-from sklearn.tree import (
-    DecisionTreeClassifier,
-    DecisionTreeRegressor,
-    plot_tree,
-    export_text
-)
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import (
-    accuracy_score,
-    mean_squared_error,
-    precision_score,
-    recall_score,
-    f1_score,
-    r2_score
-)
+import numpy as np
+
+# Scikit-learn imports
+from sklearn.model_selection import train_test_split, cross_val_score, KFold
+from sklearn.tree import DecisionTreeRegressor, plot_tree, export_text
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+
 import matplotlib.pyplot as plt
 
-# ------------------------------------------------
-# 1. Streamlit Title
-# ------------------------------------------------
-st.title("🎓 Easy Decision Tree Analyzer for Education Research")
+###################################
+# 1. Define Helper Functions
+###################################
 
-# ------------------------------------------------
-# 2. File Upload
-# ------------------------------------------------
+def freq_percent(column: pd.Series):
+    """
+    Returns a DataFrame with frequency counts and percentages
+    for a categorical column.
+    """
+    freq = column.value_counts(dropna=False)
+    percent = freq / freq.sum() * 100
+    return pd.DataFrame({
+        'Frequency': freq,
+        'Percentage': percent.round(2)
+    })
+
+def model_evaluate(model, X, y):
+    """
+    Returns evaluation metrics (R2, MSE, RMSE, MAE) on full data.
+    """
+    preds = model.predict(X)
+    r2_val = r2_score(y, preds)
+    mse_val = mean_squared_error(y, preds)
+    rmse_val = np.sqrt(mse_val)
+    mae_val = mean_absolute_error(y, preds)
+    
+    return {
+        'R2': r2_val,
+        'MSE': mse_val,
+        'RMSE': rmse_val,
+        'MAE': mae_val
+    }
+
+def cross_validate_tree(X, y):
+    """
+    Performs 10-fold cross-validation with a DecisionTreeRegressor
+    to get mean RMSE and mean R2 across folds.
+    """
+    kf = KFold(n_splits=10, shuffle=True, random_state=42)
+    
+    # For MSE/RMSE
+    mse_scores = -cross_val_score(
+        DecisionTreeRegressor(random_state=42),
+        X, y,
+        scoring='neg_mean_squared_error',
+        cv=kf
+    )
+    rmse_scores = np.sqrt(mse_scores)
+    
+    # For R2
+    r2_scores = cross_val_score(
+        DecisionTreeRegressor(random_state=42),
+        X, y,
+        scoring='r2',
+        cv=kf
+    )
+    
+    return {
+        'CV_RMSE': np.mean(rmse_scores),
+        'CV_R2': np.mean(r2_scores)
+    }
+
+
+###################################
+# 2. Streamlit App
+###################################
+
+st.title("Decision Tree Analysis (Similar to English2.R)")
+
+# --- File Uploader ---
 uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 
-if uploaded_file:
-    # Read CSV data
-    df = pd.read_csv(uploaded_file)
+if uploaded_file is not None:
+    # Load data
+    data = pd.read_csv(uploaded_file)
+    st.write("## Data Preview")
+    st.dataframe(data.head())
 
-    st.subheader("1. Preview of Your Data")
+    ############################
+    # 2a. Frequency Stats
+    ############################
+    # Provide a multiselect for the user to pick which categorical columns
+    st.write("### Frequency Tables for Selected Categorical Variables")
+    all_cols = data.columns.tolist()
+    cat_cols = st.multiselect(
+        "Select categorical columns to view Frequency & Percentage:",
+        options=all_cols
+    )
+
+    for col in cat_cols:
+        st.write(f"**Column:** {col}")
+        st.table(freq_percent(data[col]))
+
+    ############################
+    # 2b. Create Composite Variables
+    ############################
+    # Example structure, adapt to your own column names
+    st.write("### Creating Composite Scores")
     st.write(
-        "Below is a quick look at the first few rows of the dataset you uploaded."
+        "Below, we assume you have sub-items like `CSR1, CSR2, CSR3` "
+        "that combine into a `CSR` composite score, etc. Adapt these lines to fit your dataset."
     )
-    st.dataframe(df.head())
+    
+    # Check if user’s dataset has these columns; otherwise, skip
+    needed_cols = [
+        ["CSR1", "CSR2", "CSR3"],
+        ["MSR1", "MSR2", "MSR3"],
+        ["MCSR1", "MCSR2", "MCSR3"],
+        ["SSR1", "SSR2", "SSR3"],
+        ["BSR1", "BSR2", "BSR3"],
+        ["SE1", "SE2", "SE3"],
+        ["GR1", "GR2", "GR3"],
+        ["GM1", "GM2", "GM3"],
+        ["IM1", "IM2", "IM3"],
+        ["EM1", "EM2", "EM3"],
+        ["AT1", "AT2", "AT3", "AT4"]
+    ]
 
-    # ------------------------------------------------
-    # 3. Variable Selection
-    # ------------------------------------------------
-    st.subheader("2. Select Target and Predictor Variables")
-    all_columns = df.columns.tolist()
-
-    # Target selection
-    target = st.selectbox("🎯 Choose the target (outcome) variable", all_columns)
-
-    # Target type selection
-    target_type = st.radio(
-        "What is the target variable’s type?",
-        ["Categorical (e.g., pass/fail)", "Numerical (continuous)"]
-    )
-
-    # Predictor selection
-    predictors = st.multiselect(
-        "🧩 Choose one or more predictor variables (excluding the target)",
-        [col for col in all_columns if col != target]
-    )
-
-    # Data types for each predictor
-    predictor_types = {}
-    for col in predictors:
-        predictor_types[col] = st.selectbox(
-            f"Data type for predictor `{col}`",
-            ["Categorical", "Numerical"],
-            key=col
-        )
-
-    # ------------------------------------------------
-    # 4. Model Setup and Training
-    # ------------------------------------------------
-    if target and predictors:
-        # Separate features (X) and target (y)
-        X = df[predictors].copy()
-        y = df[target].copy()
-
-        # Convert predictor types
-        for col, vtype in predictor_types.items():
-            if vtype == "Categorical":
-                X[col] = X[col].astype("category")
-
-        # Determine problem type
-        if "Categorical" in target_type:
-            # Classification
-            y = y.astype("category")
-            problem_type = "classification"
+    # Create composites only if columns exist
+    for group in needed_cols:
+        missing = [col for col in group if col not in data.columns]
+        if missing:
+            st.warning(f"Skipping {group}, missing: {missing}")
         else:
-            # Regression
-            y = pd.to_numeric(y, errors="coerce")
-            problem_type = "regression"
+            base_name = group[0][:-1]  # e.g., CSR from CSR1
+            # If the first item ends with a digit, remove it:
+            # e.g., 'CSR1' -> 'CSR', 'BSR1' -> 'BSR', ...
+            composite_name = base_name
+            data[composite_name] = data[group].mean(axis=1, skipna=True)
+            st.write(f"Created composite: **{composite_name}** from {group}")
 
-        # Combine and drop missing rows
-        data = pd.concat([X, y], axis=1).dropna()
-        X = data[predictors]
-        y = data[target]
+    # Optional: show all newly created columns
+    st.write("**Current Columns in Data**:", data.columns.tolist())
 
-        # Encode categorical predictors (dummy variables)
-        X = pd.get_dummies(X, drop_first=True)
+    ############################
+    # 2c. Summaries of Composites
+    ############################
+    st.write("### Descriptive Statistics for Composite Variables")
+    # Identify all composites by checking if they are exactly 3 or 4 letter columns (e.g., CSR, MSR, MCSR?)
+    # Or you can define them directly:
+    composites = ["CSR", "MSR", "MCSR", "SSR", "BSR", "SE", "GR", "GM", "IM", "EM", "AT"]
+    existing_composites = [c for c in composites if c in data.columns]
+    
+    if existing_composites:
+        st.dataframe(data[existing_composites].describe())
+    else:
+        st.write("No valid composite columns found.")
 
-        st.write(f"Detected **{problem_type.upper()}** problem based on your choices.")
+    ############################
+    # 3. Fit Multiple Decision Trees
+    ############################
+    st.write("## Fitting Multiple Decision Trees")
 
-        # Split into train/test
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.3, random_state=42
-        )
+    # Pick your predictor set (here, we mimic the R code: SE, GR, GM, IM, EM, AT)
+    # but only if they are in the dataset
+    possible_predictors = ["SE", "GR", "GM", "IM", "EM", "AT"]
+    predictors = [p for p in possible_predictors if p in data.columns]
+    
+    if not predictors:
+        st.error("No valid predictors found (like SE, GR, GM, IM, EM, AT). Please adapt the code to your dataset.")
+    else:
+        # List of target variables (CSR, MSR, MCSR, SSR, BSR) if they exist
+        target_vars = ["CSR", "MSR", "MCSR", "SSR", "BSR"]
+        existing_targets = [t for t in target_vars if t in data.columns]
 
-        # Build the model (with a modest max_depth=4 for simplicity)
-        if problem_type == "classification":
-            model = DecisionTreeClassifier(max_depth=4, random_state=42)
+        results = []
+        model_dict = {}
+
+        for target in existing_targets:
+            # Drop rows with missing predictor/target data
+            sub_df = data[predictors + [target]].dropna()
+            X = sub_df[predictors]
+            y = sub_df[target]
+
+            # Fit a decision tree regressor
+            tree_model = DecisionTreeRegressor(random_state=42)
+            tree_model.fit(X, y)
+
+            # Evaluate on full data
+            full_eval = model_evaluate(tree_model, X, y)
+
+            # Cross-validation evaluation
+            cv_res = cross_validate_tree(X, y)
+
+            results.append({
+                "Model": target,
+                "R2": round(full_eval["R2"], 4),
+                "MSE": round(full_eval["MSE"], 4),
+                "RMSE": round(full_eval["RMSE"], 4),
+                "MAE": round(full_eval["MAE"], 4),
+                "CV_RMSE": round(cv_res["CV_RMSE"], 4),
+                "CV_R2": round(cv_res["CV_R2"], 4)
+            })
+
+            # Store model for later reporting & plotting
+            model_dict[target] = tree_model
+        
+        if results:
+            st.write("### Model Performance Table")
+            results_df = pd.DataFrame(results)
+            st.dataframe(results_df)
+
+            # ------------------------------------------------
+            # 3a. Summaries & Plots of Each Tree
+            # ------------------------------------------------
+            st.write("### Decision Tree Summaries & Plots")
+
+            for target, model in model_dict.items():
+                st.subheader(f"Decision Tree for {target}")
+
+                # Text-based summary (like 'summary(model)' in R)
+                # We'll limit depth for readability
+                tree_rules = export_text(model, feature_names=predictors, max_depth=3)
+                st.text(tree_rules)
+
+                # Plot the tree
+                fig, ax = plt.subplots(figsize=(6, 4))
+                plot_tree(
+                    model,
+                    feature_names=predictors,
+                    filled=True,
+                    max_depth=3
+                )
+                st.pyplot(fig)
+
+                # Variable importance
+                st.write("**Variable Importance**")
+                importance = model.feature_importances_
+                importance_df = pd.DataFrame({
+                    "Predictor": predictors,
+                    "Importance": importance
+                }).sort_values(by="Importance", ascending=False)
+                st.table(importance_df.reset_index(drop=True))
+
         else:
-            model = DecisionTreeRegressor(max_depth=4, random_state=42)
-
-        # Train (fit) the model
-        model.fit(X_train, y_train)
-
-        # Predictions
-        y_pred = model.predict(X_test)
-
-        # ------------------------------------------------
-        # 5. Multiple Model Fit Indices
-        # ------------------------------------------------
-        st.subheader("3. Model Evaluation Metrics")
-
-        if problem_type == "classification":
-            # Classification metrics: Accuracy, Precision, Recall, F1
-            accuracy = accuracy_score(y_test, y_pred)
-            precision = precision_score(y_test, y_pred, average='macro')
-            recall = recall_score(y_test, y_pred, average='macro')
-            f1 = f1_score(y_test, y_pred, average='macro')
-
-            st.write("**Classification Performance**")
-            st.write(f"- Accuracy: {accuracy:.2f}")
-            st.write(f"- Precision: {precision:.2f}")
-            st.write(f"- Recall: {recall:.2f}")
-            st.write(f"- F1 Score: {f1:.2f}")
-
-        else:
-            # Regression metrics: MSE, RMSE, R^2
-            mse = mean_squared_error(y_test, y_pred)
-            rmse = mse ** 0.5
-            r2 = r2_score(y_test, y_pred)
-
-            st.write("**Regression Performance**")
-            st.write(f"- Mean Squared Error (MSE): {mse:.2f}")
-            st.write(f"- Root Mean Squared Error (RMSE): {rmse:.2f}")
-            st.write(f"- R-squared (R2): {r2:.2f}")
-
-        # ------------------------------------------------
-        # 6. Simplified Decision Tree Rules
-        # ------------------------------------------------
-        st.subheader("4. Simplified Decision Tree Rules")
-        st.write(
-            "Below is a text-based outline of how the decision tree is splitting the data. "
-            "This can be somewhat technical, but try reading it top-down: each rule shows a condition, "
-            "and `class:` (or `value:` for regression) at the end shows the outcome when that path is taken."
-        )
-
-        rules_text = export_text(model, feature_names=X.columns.tolist(), max_depth=3)
-        st.text(rules_text)
-
-        st.caption(
-            "Tip: The tree is limited to a depth of 3 for readability here. "
-            "You can increase `max_depth` to see deeper splits."
-        )
-
-        # ------------------------------------------------
-        # 7. Minimal Decision Tree Diagram
-        # ------------------------------------------------
-        st.subheader("5. Minimal Decision Tree Diagram")
-        st.write(
-            "Below is a simplified diagram of the decision tree. We’ve removed extra details "
-            "like impurities and filled colors to keep it clean for beginners."
-        )
-        fig, ax = plt.subplots(figsize=(10, 5))
-        plot_tree(
-            model,
-            feature_names=X.columns,
-            max_depth=3,           # Show only first 3 levels
-            impurity=False,        # Hide impurity (e.g., Gini)
-            filled=False,          # No colors
-            proportion=False,      # Avoid proportions
-            label='none'           # Hide node labels like 'Node #'
-        )
-        st.pyplot(fig)
-
-        st.caption(
-            "Note: The actual trained tree can be up to depth=4, but we're only displaying 3 levels here for clarity."
-        )
-
-        # ------------------------------------------------
-        # 8. Report Feature Importance (No Plot)
-        # ------------------------------------------------
-        st.subheader("6. Feature Importance Scores")
-        st.write(
-            "Below are the importance scores for each predictor, showing how much they contribute to the decisions. "
-            "A larger score indicates a bigger influence on the final splits."
-        )
-
-        importance_df = pd.DataFrame({
-            'Feature': X.columns,
-            'Importance': model.feature_importances_
-        }).sort_values(by="Importance", ascending=False)
-
-        st.table(importance_df.reset_index(drop=True))
-
-        # ------------------------------------------------
-        # 9. Interpretation and Next Steps
-        # ------------------------------------------------
-        st.subheader("7. Interpretation and Next Steps")
-        st.write(
-            "Here’s how you might interpret these results:\n\n"
-            "- **Model Fit Indices**: Help judge how well your model performs. "
-            "For classification, pay attention to accuracy, precision, recall, and F1. "
-            "For regression, consider MSE, RMSE, and R-squared.\n"
-            "- **Decision Rules**: Read the text-based decision rules or follow the diagram from top to bottom. "
-            "Each split is driven by a predictor with a threshold (for numeric) or category check.\n"
-            "- **Feature Importance**: The highest-scoring features are the most influential in splitting. "
-            "These are often where you learn which predictors best explain your outcome.\n"
-            "- **Limit Tree Depth**: Keeping max_depth around 3–4 can make the tree easier to understand. "
-            "Deeper trees may overfit or become too complicated.\n"
-            "- **Consider Other Models**: This is a single decision tree. "
-            "You could explore ensembles (Random Forest, Gradient Boosting) or other methods for potentially better performance.\n"
-            "- **Data Quality**: Make sure your data is clean. Missing values, outliers, or poorly-encoded categorical data can harm model performance."
-        )
+            st.warning("No target columns found to build decision trees.")
 
