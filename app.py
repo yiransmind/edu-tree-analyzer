@@ -2,7 +2,12 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor, plot_tree
+from sklearn.tree import (
+    DecisionTreeClassifier,
+    DecisionTreeRegressor,
+    plot_tree,
+    export_text  # for textual interpretation
+)
 from sklearn.metrics import (
     accuracy_score,
     confusion_matrix,
@@ -13,7 +18,7 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 
 def main():
-    st.title("Decision Tree App for Educational (Social Science) Research")
+    st.title("Decision Tree App for Educational / Social Science Research")
 
     st.write(
         """
@@ -22,12 +27,13 @@ def main():
         2. Select whether you want a **Classification** or **Regression** tree.\n
         3. Pick your **Target (outcome)** variable.\n
         4. Select which columns will serve as **Predictors (features)**.\n
-        5. Choose the **Scale of Measurement** for each predictor (categorical vs. numeric).\n
+        5. Specify the **Scale of Measurement** for each predictor (categorical vs. numeric).\n
         6. Adjust any **hyperparameters** (e.g., criterion, max depth).\n
-        7. Click **Train Model** to see the results:\n
-           - Performance metrics\n
-           - Tree visualization\n
+        7. Click **Train Model** to see:\n
+           - Performance metrics (Accuracy, Confusion Matrix, RMSE, R²)\n
+           - Tree structure and rules (interpretation)\n
            - Variable importance\n
+           - A tree visualization\n
         """
     )
 
@@ -49,7 +55,7 @@ def main():
         )
 
         # -----------------------------------------------------------
-        # Step 3: Choose the target variable
+        # Step 3: Choose the target (outcome) variable
         # -----------------------------------------------------------
         all_columns = df.columns.tolist()
         target_col = st.selectbox("Select your target (outcome) variable", all_columns)
@@ -61,15 +67,14 @@ def main():
         selected_predictors = st.multiselect(
             "Select your predictor variables",
             possible_predictors,
-            default=possible_predictors  # You can leave default empty if you prefer
+            default=possible_predictors  # or leave blank if you prefer
         )
 
         # -----------------------------------------------------------
         # Step 5: Choose scale of measurement for each predictor
         # -----------------------------------------------------------
-        # We'll store the scale in a dictionary, e.g. {"var1": "categorical", "var2": "numeric", ...}
-        scale_of_measurement = {}
         st.write("### Specify Scale of Measurement for Each Predictor")
+        scale_of_measurement = {}
         for predictor in selected_predictors:
             scale = st.selectbox(
                 f"Variable: {predictor}",
@@ -81,7 +86,6 @@ def main():
         # -----------------------------------------------------------
         # Step 6: Select model hyperparameters
         # -----------------------------------------------------------
-        # Splitting criterion
         if task_type == "Classification":
             criterion = st.selectbox(
                 "Select split criterion",
@@ -93,7 +97,6 @@ def main():
                 ["squared_error", "friedman_mse", "absolute_error", "poisson"],
             )
 
-        # Max depth
         max_depth = st.slider(
             "Max depth of the tree (0 = unlimited)",
             min_value=0,
@@ -103,7 +106,6 @@ def main():
         )
         max_depth = None if max_depth == 0 else max_depth
 
-        # Min samples split
         min_samples_split = st.slider(
             "Minimum samples required to split an internal node",
             min_value=2,
@@ -113,49 +115,44 @@ def main():
         )
 
         # -----------------------------------------------------------
-        # Button to train model
+        # Step 7: Train Model Button
         # -----------------------------------------------------------
         if st.button("Train Model"):
             st.subheader("Model Results")
 
             # -----------------------------------------------------------
-            # Construct X (predictors) based on scale of measurement
+            # Build feature matrix X with appropriate encoding
             # -----------------------------------------------------------
-            # We'll build a new DataFrame (X) that properly encodes
-            # each selected predictor as numeric or categorical (dummies).
             X_list = []
             col_names = []
 
             for col in selected_predictors:
                 if scale_of_measurement[col] == "categorical":
-                    # One-hot encode the categorical column
+                    # One-hot encode
                     dummies = pd.get_dummies(df[col], prefix=col, drop_first=False)
                     X_list.append(dummies)
                     col_names.extend(dummies.columns.tolist())
                 else:
-                    # Numeric, use as-is
+                    # Numeric
                     X_list.append(df[[col]])
                     col_names.append(col)
 
-            # Concatenate all feature columns
-            if X_list:
-                X = pd.concat(X_list, axis=1)
-            else:
-                st.error("No predictors selected.")
+            if not X_list:
+                st.error("No predictors selected. Please select at least one.")
                 return
 
-            # Define y (target)
+            X = pd.concat(X_list, axis=1)
             y = df[target_col]
 
             # -----------------------------------------------------------
-            # Create train-test split
+            # Train-test split
             # -----------------------------------------------------------
             X_train, X_test, y_train, y_test = train_test_split(
                 X, y, test_size=0.3, random_state=42
             )
 
             # -----------------------------------------------------------
-            # Build and fit the Decision Tree
+            # Initialize and fit the Decision Tree
             # -----------------------------------------------------------
             if task_type == "Classification":
                 model = DecisionTreeClassifier(
@@ -164,7 +161,7 @@ def main():
                     min_samples_split=min_samples_split,
                     random_state=42,
                 )
-            else:  # Regression
+            else:
                 model = DecisionTreeRegressor(
                     criterion=criterion,
                     max_depth=max_depth,
@@ -175,7 +172,7 @@ def main():
             model.fit(X_train, y_train)
 
             # -----------------------------------------------------------
-            # Evaluate the model
+            # Basic Performance Metrics
             # -----------------------------------------------------------
             y_pred = model.predict(X_test)
 
@@ -183,18 +180,15 @@ def main():
                 accuracy = accuracy_score(y_test, y_pred)
                 st.write(f"**Accuracy:** {accuracy:.4f}")
 
-                # Confusion Matrix
                 cm = confusion_matrix(y_test, y_pred)
                 st.write("Confusion Matrix:")
                 st.write(cm)
 
-                # Classification report (precision, recall, F1-score, etc.)
                 report = classification_report(y_test, y_pred, output_dict=True)
-                st.write("Classification Report:")
+                st.write("Classification Report (Precision, Recall, F1-score):")
                 st.write(pd.DataFrame(report).transpose())
 
             else:
-                # Regression metrics
                 mse = mean_squared_error(y_test, y_pred)
                 rmse = np.sqrt(mse)
                 r2 = r2_score(y_test, y_pred)
@@ -202,23 +196,47 @@ def main():
                 st.write(f"**R² (Coefficient of Determination):** {r2:.4f}")
 
             # -----------------------------------------------------------
+            # Tree Statistics & Interpretation
+            # -----------------------------------------------------------
+            st.write("### Decision Tree Statistics & Interpretation")
+            # Number of leaves & depth
+            n_leaves = model.get_n_leaves()
+            depth = model.get_depth()
+            st.write(f"- **Number of leaves**: {n_leaves}")
+            st.write(f"- **Max depth**: {depth}")
+
+            # Textual description of the tree (rules)
+            st.write("**Tree Rules (Split-by-Split Interpretation):**")
+            tree_rules = export_text(model, feature_names=col_names)
+            st.code(tree_rules)
+
+            st.markdown(
+                """
+                **How to read this**:
+                - Each `|---` indicates a split level in the tree.
+                - `gini` (or other impurity/criterion) describes the impurity at that node.
+                - `samples` is how many training samples passed through that node.
+                - `value` is either the distribution of classes (classification) 
+                  or the mean value (regression).
+                - Leaf nodes (no further splits) show the final prediction.
+                """
+            )
+
+            # -----------------------------------------------------------
             # Variable Importance
             # -----------------------------------------------------------
             st.write("### Variable Importance")
             importances = model.feature_importances_
-            # Sort in descending order
             sorted_idx = np.argsort(importances)[::-1]
             sorted_importances = importances[sorted_idx]
             sorted_features = np.array(col_names)[sorted_idx]
 
-            # Display as a table
             importance_df = pd.DataFrame({
                 "Feature": sorted_features,
                 "Importance": sorted_importances
             })
             st.write(importance_df)
 
-            # Display as a bar chart
             fig_imp, ax_imp = plt.subplots()
             ax_imp.bar(range(len(sorted_features)), sorted_importances)
             ax_imp.set_xticks(range(len(sorted_features)))
@@ -227,7 +245,7 @@ def main():
             st.pyplot(fig_imp)
 
             # -----------------------------------------------------------
-            # Visualize the Decision Tree
+            # Tree Visualization
             # -----------------------------------------------------------
             st.write("### Decision Tree Plot")
             fig, ax = plt.subplots(figsize=(12, 8))
@@ -248,6 +266,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
