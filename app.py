@@ -30,7 +30,7 @@ def main():
         ### Welcome to the All-in-One Decision Tree App
 
         This tool helps **non-coders** (and coders alike) to:
-        
+
         1. **Upload a CSV** dataset.\n
         2. Decide if their problem is **Classification** or **Regression**.\n
         3. Select a **Target** variable (the outcome to predict) and **Predictor** variables (features).\n
@@ -40,14 +40,13 @@ def main():
            - **Performance metrics** (Accuracy, Confusion Matrix, Classification Report **or** RMSE, R²)\n
            - **Feature Importance** (which predictors matter most)\n
            - A **High-Resolution Decision Tree Figure** (with an option to download it)\n
-           - A **Text-Based Tree** if the tree ends up deeper than 3 levels (since large trees can be hard to read visually)\n
+           - A **Text-Based Tree** if the tree is deeper than 3 levels\n
 
         #### Important Notes:
-        - For **Regression Trees**, scikit-learn’s figure displays node impurity as "**squared_error**."  
-          **This is effectively the Mean Squared Error (MSE)** for the samples in that node.  
-          The name "squared_error" just matches the internal scikit-learn criterion.\n
-        - For **Regression Trees**, the text-based tree (`export_text`) does **not** show the node’s impurity.  
-          That’s a scikit-learn quirk: classification rules show Gini/Entropy in the text, but regression rules do not show MSE.\n
+        - For **Regression Trees**, scikit-learn’s figure may display node impurity as "squared_error," 
+          which is effectively **MSE** under the hood.  
+        - For **Regression Trees**, the text-based tree (`export_text`) does **not** show the node’s impurity. 
+          That’s just a scikit-learn quirk.
         """
     )
 
@@ -132,7 +131,7 @@ def main():
                 "Splitting Criterion (Regression)",
                 ["squared_error", "friedman_mse", "absolute_error", "poisson"],
                 help=(
-                    "How we measure node quality for regression. 'squared_error' effectively means MSE, "
+                    "How to measure node quality for regression. 'squared_error' means MSE internally, "
                     "which is typical for standard regression trees."
                 )
             )
@@ -222,7 +221,7 @@ def main():
                 acc = accuracy_score(y_test, y_pred)
                 st.write(f"**Accuracy**: {acc:.4f}")
                 st.write(
-                    "Proportion of correct predictions on the test set. 1.0 = perfect, 0.0 = none."
+                    "Proportion of correct predictions on the test set (range: 0 to 1)."
                 )
 
                 cm = confusion_matrix(y_test, y_pred)
@@ -243,17 +242,40 @@ def main():
                 r2_val = r2_score(y_test, y_pred)
                 st.write(f"**RMSE**: {rmse_value:.4f}")
                 st.write(
-                    "RMSE (Root Mean Squared Error) means on average how far your predictions are off from the actual values."
+                    "RMSE (Root Mean Squared Error) is the square root of the average squared difference "
+                    "between predicted and actual values."
                 )
                 st.write(f"**R²**: {r2_val:.4f}")
                 st.write(
-                    "R² (Coefficient of Determination) measures how much variance is explained. 1.0 = perfect, 0.0 = none."
+                    "R² (Coefficient of Determination) measures how much variance is explained by the model. "
+                    "1.0 = perfect prediction, 0.0 = model explains nothing."
                 )
 
-                st.write(
-                    "**Note**: In the **tree figure** below, if you chose 'squared_error' as your criterion, "
-                    "each node will display `'squared_error'` for the impurity measure. "
-                    "That is effectively the **mean squared error** at that node."
+            # --------------------------------------------------------
+            # Extra Guidance on Interpreting Metrics
+            # --------------------------------------------------------
+            st.subheader("Interpreting These Metrics")
+            if task_type == "Classification":
+                st.markdown(
+                    """
+                    - **Accuracy**: How often the model correctly predicts the class.  
+                      - *Interpretation*: 0.90 means 90% of the time, the model's prediction matches the true label.
+                    - **Confusion Matrix**: Breaks down predictions vs. actual classes.  
+                      - *Interpretation*: Helps to see if the model confuses certain classes more than others.
+                    - **Classification Report** (Precision, Recall, F1-Score):  
+                      - *Precision*: Of all predicted positives, how many are truly positive?  
+                      - *Recall (Sensitivity)*: Of all actual positives, how many did we catch?  
+                      - *F1-Score*: The harmonic mean of precision & recall.
+                    """
+                )
+            else:
+                st.markdown(
+                    """
+                    - **RMSE**: How far off predictions are, on average.  
+                      - *Interpretation*: If RMSE is 10, the model’s predictions deviate from true values by about 10 units on average.
+                    - **R²**: Proportion of variance in the target explained by the model.  
+                      - *Interpretation*: An R² of 0.75 means the model explains 75% of the variability in the outcome.
+                    """
                 )
 
             # --------------------------------------------------------
@@ -274,7 +296,7 @@ def main():
 
             st.write(
                 "A higher importance indicates that predictor was used more often (or more effectively) "
-                "in splitting nodes to reduce error (regression) or increase purity (classification)."
+                "to split nodes and reduce error (regression) or increase purity (classification)."
             )
 
             # Bar chart
@@ -319,7 +341,7 @@ def main():
                 class_names=class_names,
                 filled=True,
                 rounded=True,
-                impurity=True,  # Ensures impurity is shown in the figure
+                impurity=True,  # Displays impurity in the figure
                 ax=ax_tree
             )
             st.pyplot(fig_tree)
@@ -328,19 +350,15 @@ def main():
                 """
                 ### How to Read This Tree Figure
 
-                - **samples**: Number of training samples in this node.\n
+                - **samples**: Number of training samples in this node.  
                 - **value**:
-                  - **Classification**: distribution of samples across classes.\n
-                  - **Regression**: the average target value in this node.\n
+                  - **Classification**: the distribution of samples across classes.  
+                  - **Regression**: the average target value in that node.  
                 - **impurity**:
-                  - **Classification**: 'gini', 'entropy', or 'log_loss' depending on your chosen criterion.\n
-                  - **Regression**: e.g., 'squared_error' if you chose that criterion (the numeric value is MSE).\n
-                - **Splits**: Each node splits according to a rule like "Feature <= x".\n
-                - **Leaf nodes**: No further splits, so that node's 'value' is your final prediction for that subgroup.\n
-
-                #### Note for Regression Trees:
-                - The figure might show something like "squared_error = 45.2". That is effectively **MSE** at that node.\n
-                - scikit-learn uses 'squared_error' as a label instead of 'MSE'.\n
+                  - **Classification**: 'gini', 'entropy', or 'log_loss' depending on your chosen criterion.  
+                  - **Regression**: e.g., 'squared_error' if you chose that criterion.  
+                - **Splits**: Each node splits according to a rule like "Feature ≤ x".  
+                - **Leaf nodes**: No further splits, so the 'value' is your final prediction for that subgroup.  
                 """
             )
 
@@ -369,10 +387,9 @@ def main():
 
                 st.write(
                     """
-                    #### Text Tree Limitations for Regression
-                    - For Classification, this text typically includes node impurity (like Gini/Entropy).
-                    - For Regression, scikit-learn **does not show** the impurity measure (MSE) in this text format.
-                      You will see `value = [some_average]`, but not an 'impurity' line.\n
+                    #### Note
+                    - For Regression Trees, scikit-learn **does not show** the impurity measure (like MSE) in the text format.  
+                    - For Classification, you'll see Gini/Entropy/Log Loss values in the text output.
                     """
                 )
 
