@@ -117,6 +117,32 @@ def main():
         # ------------------------------------------------------------
         st.write("### 5) Decision Tree Hyperparameters")
 
+        st.markdown(
+    """
+    Hyperparameters control how your decision tree is built and can help prevent overfitting. 
+    Use the controls below to select the splitting **criterion**, **maximum depth**, and **minimum samples** to split.
+
+    **Guidelines for Choosing Hyperparameters:**
+    - **Criterion (Classification)**:
+      - *gini*: Often the default; measures how often a randomly chosen element would be incorrectly labeled.
+      - *entropy*: Similar to gini, but can produce slightly different trees.
+      - *log_loss*: Another impurity measure, sometimes slower to compute; not as common as gini or entropy.
+    - **Criterion (Regression)**:
+      - *squared_error*: Standard MSE-based splitting; often a good default.
+      - *friedman_mse*: A variation on MSE that can improve performance in some cases.
+      - *absolute_error*: Focuses on median-based splits, more robust to outliers.
+      - *poisson*: Used for count data where the target is non-negative.
+    - **Max Depth**:
+      - A lower max depth (e.g., 3-5) produces simpler, more interpretable trees but may underfit.
+      - A higher max depth can capture more nuances in the data but risks overfitting.
+      - Setting this to 0 in the slider means no limit (i.e., the tree can grow until all leaves are pure).
+    - **Minimum Samples to Split**:
+      - Controls how many samples a node must have before a further split is considered.
+      - Increasing this number generally reduces overfitting (by preventing very specific splits) 
+        but might cause underfitting if set too high.
+    """
+)
+
         if task_type == "Classification":
             criterion = st.selectbox(
                 "Splitting Criterion (Classification)",
