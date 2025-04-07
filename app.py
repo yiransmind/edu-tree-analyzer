@@ -1,59 +1,74 @@
 import streamlit as st
 import pandas as pd
-from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor, export_text, plot_tree
+from sklearn.tree import (
+    DecisionTreeClassifier,
+    DecisionTreeRegressor,
+    plot_tree,
+    export_text
+)
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, mean_squared_error
+from sklearn.metrics import (
+    accuracy_score,
+    mean_squared_error,
+    precision_score,
+    recall_score,
+    f1_score,
+    r2_score
+)
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 # ------------------------------------------------
-# Streamlit App Title
+# 1. Streamlit Title
 # ------------------------------------------------
 st.title("🎓 Easy Decision Tree Analyzer for Education Research")
 
 # ------------------------------------------------
-# File Upload
+# 2. File Upload
 # ------------------------------------------------
 uploaded_file = st.file_uploader("Upload your CSV file", type=["csv"])
 
 if uploaded_file:
-    # Read data
+    # Read CSV data
     df = pd.read_csv(uploaded_file)
-    
-    st.write("### 1. Preview of your data")
-    st.write("This table shows the first few rows of your uploaded dataset.")
+
+    st.subheader("1. Preview of Your Data")
+    st.write(
+        "Below is a quick look at the first few rows of the dataset you uploaded."
+    )
     st.dataframe(df.head())
 
     # ------------------------------------------------
-    # Column Selections
+    # 3. Variable Selection
     # ------------------------------------------------
-    st.write("### 2. Select your target (outcome) variable and predictors")
+    st.subheader("2. Select Target and Predictor Variables")
     all_columns = df.columns.tolist()
 
-    # Choose target and define type
-    target = st.selectbox("🎯 Select your target (outcome) variable", all_columns)
+    # Target selection
+    target = st.selectbox("🎯 Choose the target (outcome) variable", all_columns)
+
+    # Target type selection
     target_type = st.radio(
-        "🔎 What type of variable is the target?",
-        ["Categorical (e.g., pass/fail, yes/no)", "Numerical (continuous values)"]
+        "What is the target variable’s type?",
+        ["Categorical (e.g., pass/fail)", "Numerical (continuous)"]
     )
 
-    # Choose predictor variables
+    # Predictor selection
     predictors = st.multiselect(
-        "🧩 Select one or more predictor (explanatory) variables", 
+        "🧩 Choose one or more predictor variables (excluding the target)",
         [col for col in all_columns if col != target]
     )
 
-    # Define each predictor's type
+    # Data types for each predictor
     predictor_types = {}
     for col in predictors:
         predictor_types[col] = st.selectbox(
-            f"📌 Data type for predictor `{col}`",
+            f"Data type for predictor `{col}`",
             ["Categorical", "Numerical"],
             key=col
         )
 
     # ------------------------------------------------
-    # Once the user has chosen a target & predictors...
+    # 4. Model Setup and Training
     # ------------------------------------------------
     if target and predictors:
         # Separate features (X) and target (y)
@@ -65,119 +80,147 @@ if uploaded_file:
             if vtype == "Categorical":
                 X[col] = X[col].astype("category")
 
-        # Decide if it's classification or regression
+        # Determine problem type
         if "Categorical" in target_type:
+            # Classification
             y = y.astype("category")
             problem_type = "classification"
         else:
+            # Regression
             y = pd.to_numeric(y, errors="coerce")
             problem_type = "regression"
 
-        # ------------------------------------------------
-        # Data Cleaning: drop rows with missing values
-        # ------------------------------------------------
+        # Combine and drop missing rows
         data = pd.concat([X, y], axis=1).dropna()
         X = data[predictors]
         y = data[target]
 
-        # Encode categorical predictors (turn categories into 0/1 dummy codes)
+        # Encode categorical predictors (dummy variables)
         X = pd.get_dummies(X, drop_first=True)
 
-        st.write(f"**You have selected a {problem_type.upper()} problem** based on your target variable type.")
+        st.write(f"Detected **{problem_type.upper()}** problem based on your choices.")
 
-        # ------------------------------------------------
-        # Train-Test Split
-        # ------------------------------------------------
-        st.write("### 3. Train-Test Split")
-        st.write("We split the data into training (70%) and test (30%) to evaluate how well the model generalizes.")
+        # Split into train/test
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.3, random_state=42
         )
 
-        # ------------------------------------------------
-        # Model Building and Fitting
-        # ------------------------------------------------
-        st.write("### 4. Train the Decision Tree Model")
-        st.write("We will create a decision tree with a maximum depth of 4. This limit helps make the tree easier to interpret.")
+        # Build the model (with a modest max_depth=4 for simplicity)
         if problem_type == "classification":
             model = DecisionTreeClassifier(max_depth=4, random_state=42)
         else:
             model = DecisionTreeRegressor(max_depth=4, random_state=42)
 
+        # Train (fit) the model
         model.fit(X_train, y_train)
+
+        # Predictions
         y_pred = model.predict(X_test)
 
         # ------------------------------------------------
-        # Model Performance
+        # 5. Multiple Model Fit Indices
         # ------------------------------------------------
-        st.write("### 5. Model Performance on Test Data")
+        st.subheader("3. Model Evaluation Metrics")
 
         if problem_type == "classification":
-            score = accuracy_score(y_test, y_pred)
-            st.write(f"**Accuracy**: The model correctly classifies {score:.2f} (out of 1.00) of the test data.")
+            # Classification metrics: Accuracy, Precision, Recall, F1
+            accuracy = accuracy_score(y_test, y_pred)
+            precision = precision_score(y_test, y_pred, average='macro')
+            recall = recall_score(y_test, y_pred, average='macro')
+            f1 = f1_score(y_test, y_pred, average='macro')
+
+            st.write("**Classification Performance**")
+            st.write(f"- Accuracy: {accuracy:.2f}")
+            st.write(f"- Precision: {precision:.2f}")
+            st.write(f"- Recall: {recall:.2f}")
+            st.write(f"- F1 Score: {f1:.2f}")
+
         else:
+            # Regression metrics: MSE, RMSE, R^2
             mse = mean_squared_error(y_test, y_pred)
-            st.write(f"**Mean Squared Error**: {mse:.2f}")
+            rmse = mse ** 0.5
+            r2 = r2_score(y_test, y_pred)
+
+            st.write("**Regression Performance**")
+            st.write(f"- Mean Squared Error (MSE): {mse:.2f}")
+            st.write(f"- Root Mean Squared Error (RMSE): {rmse:.2f}")
+            st.write(f"- R-squared (R2): {r2:.2f}")
 
         # ------------------------------------------------
-        # Display Tree Rules
+        # 6. Simplified Decision Tree Rules
         # ------------------------------------------------
-        st.write("### 6. Decision Tree Rules")
-        st.write("These rules show how the decision tree splits the data step by step:")
-        tree_rules = export_text(model, feature_names=X.columns.tolist())
-        st.code(tree_rules)
+        st.subheader("4. Simplified Decision Tree Rules")
+        st.write(
+            "Below is a text-based outline of how the decision tree is splitting the data. "
+            "This can be somewhat technical, but try reading it top-down: each rule shows a condition, "
+            "and `class:` (or `value:` for regression) at the end shows the outcome when that path is taken."
+        )
+
+        rules_text = export_text(model, feature_names=X.columns.tolist(), max_depth=3)
+        st.text(rules_text)
+
+        st.caption(
+            "Tip: The tree is limited to a depth of 3 for readability here. "
+            "You can increase `max_depth` to see deeper splits."
+        )
 
         # ------------------------------------------------
-        # Plot the Tree
+        # 7. Minimal Decision Tree Diagram
         # ------------------------------------------------
-        st.write("### 7. Decision Tree Diagram")
-        st.write("Below is a diagram of the decision tree. Each node shows the splitting condition and the outcome.")
-        fig, ax = plt.subplots(figsize=(12, 6))
+        st.subheader("5. Minimal Decision Tree Diagram")
+        st.write(
+            "Below is a simplified diagram of the decision tree. We’ve removed extra details "
+            "like impurities and filled colors to keep it clean for beginners."
+        )
+        fig, ax = plt.subplots(figsize=(10, 5))
         plot_tree(
             model,
             feature_names=X.columns,
-            filled=True,
-            rounded=True,
-            fontsize=10,
-            ax=ax
+            max_depth=3,           # Show only first 3 levels
+            impurity=False,        # Hide impurity (e.g., Gini)
+            filled=False,          # No colors
+            proportion=False,      # Avoid proportions
+            label='none'           # Hide node labels like 'Node #'
         )
         st.pyplot(fig)
 
-        # ------------------------------------------------
-        # Feature Importance
-        # ------------------------------------------------
-        st.write("### 8. Feature Importance")
-        st.write(
-            "This chart shows which predictors are most important in splitting the data. "
-            "A higher value means the feature contributed more to the decision rules."
+        st.caption(
+            "Note: The actual trained tree can be up to depth=4, but we're only displaying 3 levels here for clarity."
         )
-        
+
+        # ------------------------------------------------
+        # 8. Report Feature Importance (No Plot)
+        # ------------------------------------------------
+        st.subheader("6. Feature Importance Scores")
+        st.write(
+            "Below are the importance scores for each predictor, showing how much they contribute to the decisions. "
+            "A larger score indicates a bigger influence on the final splits."
+        )
+
         importance_df = pd.DataFrame({
             'Feature': X.columns,
             'Importance': model.feature_importances_
         }).sort_values(by="Importance", ascending=False)
 
-        fig2, ax2 = plt.subplots()
-        sns.barplot(x="Importance", y="Feature", data=importance_df, ax=ax2)
-        ax2.set_xlabel("Importance Score")
-        ax2.set_ylabel("Feature Name")
-        st.pyplot(fig2)
+        st.table(importance_df.reset_index(drop=True))
 
         # ------------------------------------------------
-        # Interpretation
+        # 9. Interpretation and Next Steps
         # ------------------------------------------------
-        st.write("### 9. Interpretation and Next Steps")
+        st.subheader("7. Interpretation and Next Steps")
         st.write(
-            "Use the results above to understand how each predictor influences the outcome. "
-            "Here are some basic tips for interpretation:"
+            "Here’s how you might interpret these results:\n\n"
+            "- **Model Fit Indices**: Help judge how well your model performs. "
+            "For classification, pay attention to accuracy, precision, recall, and F1. "
+            "For regression, consider MSE, RMSE, and R-squared.\n"
+            "- **Decision Rules**: Read the text-based decision rules or follow the diagram from top to bottom. "
+            "Each split is driven by a predictor with a threshold (for numeric) or category check.\n"
+            "- **Feature Importance**: The highest-scoring features are the most influential in splitting. "
+            "These are often where you learn which predictors best explain your outcome.\n"
+            "- **Limit Tree Depth**: Keeping max_depth around 3–4 can make the tree easier to understand. "
+            "Deeper trees may overfit or become too complicated.\n"
+            "- **Consider Other Models**: This is a single decision tree. "
+            "You could explore ensembles (Random Forest, Gradient Boosting) or other methods for potentially better performance.\n"
+            "- **Data Quality**: Make sure your data is clean. Missing values, outliers, or poorly-encoded categorical data can harm model performance."
         )
-        
-        top_feat = importance_df.iloc[0]
-        st.markdown(f"""
-        - **Most important predictor**: `{top_feat.Feature}`.  
-          This means this feature plays a central role in how the tree splits and makes decisions.
-        - **Tree Rules**: Start from the top of the tree and follow the splits to see which conditions lead to different outcomes.
-        - **Keep it Simple**: A maximum depth of 4 is used here to keep the tree easy to interpret. You can adjust the depth to see if performance improves, but the tree may become more complex.
-        - **Next Steps**: Consider collecting more data, testing other model types (e.g., Random Forest), or applying cross-validation to see if your results hold up.
-        """)
 
