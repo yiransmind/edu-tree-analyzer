@@ -23,11 +23,11 @@ def main():
     # ----------------------------------------------------------------
     # Title and High-Level Introduction
     # ----------------------------------------------------------------
-    st.title("Comprehensive Decision Tree Builder & Interpreter")
+    st.title("EduTree")
 
     st.write(
         """
-        ### Welcome to the All-in-One Decision Tree App
+        ### Welcome to the EduTree App
 
         This tool helps **non-coders** (and coders alike) to:
 
