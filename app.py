@@ -27,7 +27,7 @@ def main():
 
     st.write(
         """
-        ### Welcome to the EduTree for decision tree analysis!
+        ### Welcome to the EduTree for decision tree analysis
 
         This tool helps **non-coders** (and coders alike) to:
 
