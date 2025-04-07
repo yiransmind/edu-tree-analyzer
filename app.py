@@ -21,7 +21,7 @@ def main():
     # ----------------------------------------------------------------
     # Introduction / App Title
     # ----------------------------------------------------------------
-    st.title("Interactive Decision Tree Builder (Figure-Focused)")
+    st.title("Interactive Decision Tree Builder")
 
     st.write(
         """
