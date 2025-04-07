@@ -23,7 +23,7 @@ def main():
     # ----------------------------------------------------------------
     # Title and High-Level Introduction
     # ----------------------------------------------------------------
-    st.title("EduTree Analyzer")
+    st.title("EduTree")
 
     st.write(
         """
