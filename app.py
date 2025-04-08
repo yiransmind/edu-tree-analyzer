@@ -50,10 +50,6 @@ def main():
           3. Choose CSV (Comma delimited) (*.csv) as the file format.
           4. Click Save.
         - Your file is processed temporarily and never saved—your data stays **private and secure**.
-        - For **Regression Trees**, scikit-learn’s figure may display node impurity as "squared_error," 
-          which is effectively **MSE** under the hood.  
-        - For **Regression Trees**, the text-based tree (`export_text`) does **not** show the node’s impurity. 
-          That’s just a scikit-learn quirk.
         """
     )
 
