@@ -43,6 +43,7 @@ def main():
            - A **Text-Based Tree** if the tree is deeper than 3 levels\n
 
         #### Notes:
+        - Don't have a file to try? You can download a sample dataset from my GitHub repo: https://github.com/yiransmind/edu-tree-analyzer/blob/main/Synthetic_Educational_Dataset.csv
         - If you have an Excel file and need to convert it to CSV, follow these quick steps:
           1. Open your Excel file in Microsoft Excel or Google Sheets.
           2. Click “File” > “Save As” (or “Download As” in Google Sheets).
