@@ -31,7 +31,7 @@ def main():
 
         This tool helps **non-coders** (and coders alike) to:
 
-        1. **Upload a CSV or Excel** dataset.\n
+        1. **Upload a CSV** dataset.\n
         2. Decide if their problem is **Classification** or **Regression**.\n
         3. Select a **Target** variable (the outcome to predict) and **Predictor** variables (features).\n
         4. Specify which predictors are **numeric** vs. **categorical** (the app will one-hot encode categorical).\n
@@ -54,13 +54,9 @@ def main():
     # ----------------------------------------------------------------
     # Step 1: Upload CSV or Excel
     # ----------------------------------------------------------------
-    uploaded_file = st.file_uploader("1) Upload your CSV or Excel file", type=["csv", "xlsx"])
+    uploaded_file = st.file_uploader("1) Upload your CSV file", type=["csv"])
     if uploaded_file is not None:
-        # Determine file type and read accordingly
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
-        elif uploaded_file.name.endswith('.xlsx'):
-            df = pd.read_excel(uploaded_file)
+        df = pd.read_csv(uploaded_file)
 
         st.subheader("Data Preview")
         st.write(df.head(10))
