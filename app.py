@@ -42,7 +42,12 @@ def main():
            - A **High-Resolution Decision Tree Figure** (with an option to download it)\n
            - A **Text-Based Tree** if the tree is deeper than 3 levels\n
 
-        #### Important Notes:
+        #### Notes:
+        - If you have an Excel file and need to convert it to CSV, follow these quick steps:
+          1. Open your Excel file in Microsoft Excel or Google Sheets.
+          2. Click “File” > “Save As” (or “Download As” in Google Sheets).
+          3. Choose CSV (Comma delimited) (*.csv) as the file format.
+          4. Click Save.
         - For **Regression Trees**, scikit-learn’s figure may display node impurity as "squared_error," 
           which is effectively **MSE** under the hood.  
         - For **Regression Trees**, the text-based tree (`export_text`) does **not** show the node’s impurity. 
