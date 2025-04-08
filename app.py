@@ -49,7 +49,7 @@ def main():
           2. Click “File” > “Save As” (or “Download As” in Google Sheets).
           3. Choose CSV (Comma delimited) (*.csv) as the file format.
           4. Click Save.
-        - You may try regression tree with numerical variables first.
+        - You may try regression with numerical variables first.
         - Your file is processed temporarily and never saved—your data stays **private and secure**.
         """
     )
