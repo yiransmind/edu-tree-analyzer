@@ -66,7 +66,7 @@ def main():
         # ------------------------------------------------------------
         # Step 2: Classification or Regression
         # ------------------------------------------------------------
-        st.write("### 2) Classification or Regression?")
+        st.write("### Classification or Regression?")
         task_type = st.selectbox(
             "Select which type of problem fits your target variable",
             ["Classification", "Regression"],
@@ -81,7 +81,7 @@ def main():
         # ------------------------------------------------------------
         all_cols = df.columns.tolist()
         target_col = st.selectbox(
-            "3) Pick your Target (outcome) variable",
+            "Pick your Target (outcome) variable",
             all_cols,
             help="Which column are you trying to predict?"
         )
@@ -89,7 +89,7 @@ def main():
         # ------------------------------------------------------------
         # Step 4: Pick Predictors & Indicate Scale
         # ------------------------------------------------------------
-        st.write("### 4) Choose Predictor Variables & Their Scales")
+        st.write("### Choose Predictor Variables & Their Scales")
         possible_predictors = [c for c in all_cols if c != target_col]
         selected_predictors = st.multiselect(
             "Select the columns to use as features (predictors):",
@@ -115,7 +115,7 @@ def main():
         # ------------------------------------------------------------
         # Step 5: Decision Tree Hyperparameters
         # ------------------------------------------------------------
-        st.write("### 5) Decision Tree Hyperparameters")
+        st.write("### Decision Tree Hyperparameters")
 
         st.markdown(
     """
