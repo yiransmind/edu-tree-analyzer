@@ -31,7 +31,7 @@ def main():
 
         This tool helps **non-coders** (and coders alike) to:
 
-        1. **Upload a CSV or Excel ** dataset.\n
+        1. **Upload a CSV or Excel** dataset.\n
         2. Decide if their problem is **Classification** or **Regression**.\n
         3. Select a **Target** variable (the outcome to predict) and **Predictor** variables (features).\n
         4. Specify which predictors are **numeric** vs. **categorical** (the app will one-hot encode categorical).\n
